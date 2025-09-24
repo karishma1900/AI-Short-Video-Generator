@@ -1,0 +1,42 @@
+name: Render video
+
+on:
+  workflow_dispatch:
+    inputs:
+      titleText:
+        description: 'What should the video say?'
+        required: true
+        default: 'Welcome to Remotion'
+      titleColor:
+        description: 'What color should the text be?'
+        required: true
+        default: 'black'
+
+jobs:
+  render:
+    name: Render Remotion Video
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Save input props to file
+        run: echo '${{ toJson(github.event.inputs) }}' > input-props.json
+
+      - name: Render the video
+        run: npx remotion render src/RemotionRoot.tsx MyComp out/video.mp4 --props=input-props.json
+
+      - name: Upload rendered video as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: rendered-video
+          path: out/video.mp4
