@@ -3,14 +3,22 @@ name: Render video
 on:
   workflow_dispatch:
     inputs:
-      titleText:
-        description: 'What should the video say?'
+      script:
+        description: 'Script for the video'
         required: true
-        default: 'Welcome to Remotion'
-      titleColor:
-        description: 'What color should the text be?'
+        default: 'This is a sample script'
+      imageList:
+        description: 'Comma-separated image URLs'
         required: true
-        default: 'black'
+        default: 'https://via.placeholder.com/300,https://via.placeholder.com/300'
+      audioFileUrl:
+        description: 'URL to audio file'
+        required: true
+        default: 'https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3'
+      captions:
+        description: 'Captions as JSON string'
+        required: true
+        default: '[{"start":0,"end":2000,"text":"Hello World"},{"start":2000,"end":4000,"text":"Welcome to Remotion"}]'
 
 jobs:
   render:
@@ -30,10 +38,17 @@ jobs:
         run: npm install
 
       - name: Save input props to file
-        run: echo '${{ toJson(github.event.inputs) }}' > input-props.json
+        run: |
+          node -e "const fs = require('fs'); fs.writeFileSync('input-props.json', JSON.stringify({
+            script: '${{ github.event.inputs.script }}',
+            imageList: '${{ github.event.inputs.imageList }}'.split(','),
+            audioFileUrl: '${{ github.event.inputs.audioFileUrl }}',
+            captions: JSON.parse('${{ github.event.inputs.captions }}'),
+            setDurationInFrame: () => {}
+          }))"
 
       - name: Render the video
-        run: npx remotion render src/RemotionRoot.tsx MyComp out/video.mp4 --props=input-props.json
+        run: npx remotion render src/remotion/index.jsx Empty out/video.mp4 --props=input-props.json
 
       - name: Upload rendered video as artifact
         uses: actions/upload-artifact@v4
