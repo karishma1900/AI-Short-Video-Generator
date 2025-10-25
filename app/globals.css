@@ -127,3 +127,7 @@ body{
   color:green;
 
 }
+.\*\:data-\[slot\=select-value\]\:gap-2 {
+    :is(& > *) {
+      color:white;
+    }}
