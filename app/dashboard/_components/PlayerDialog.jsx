@@ -20,13 +20,15 @@ function PlayerDialog({ playVideo, videoId }) {
   const [videoData, setVideoData] = useState();
   const [durationInFrame, setDurationInFrame] = useState(100);
   const [isExporting, setIsExporting] = useState(false);
-  const [videoPath, setVideoPath] = useState(null); // <-- Changed from videoUrl to videoPath
+  const [videoPath, setVideoPath] = useState(null);
+  const [cloudinaryUrl, setCloudinaryUrl] = useState(null);
 
   useEffect(() => {
     if (playVideo && videoId) {
       setOpenDialog(true);
       GetVideoData();
-      setVideoPath(null); // Reset videoPath on new video open
+      setVideoPath(null);
+      setCloudinaryUrl(null);
     }
   }, [playVideo, videoId]);
 
@@ -50,7 +52,6 @@ function PlayerDialog({ playVideo, videoId }) {
     setVideoData(data);
   };
 
-  // NEW: Function to handle export button click to local storage
   const exportVideoToLocal = async () => {
     if (!videoData) return;
 
@@ -62,19 +63,19 @@ function PlayerDialog({ playVideo, videoId }) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ ...videoData, id: videoId }), // Pass videoId to the API
+        body: JSON.stringify({ ...videoData, id: videoId }),
       });
 
       const data = await res.json();
 
       if (data.videoPath) {
-        setVideoPath(data.videoPath); // Set the local path
-        alert(`✅ Video saved locally at: ${data.videoPath}`);
+        setVideoPath(data.videoPath);
+        setCloudinaryUrl(data.videoUrl);
       } else {
-        alert("❌ Failed to save video locally.");
+        alert("Failed to export video.");
       }
     } catch (e) {
-      alert("❌ Error saving video: " + e.message);
+      alert("Error exporting video: " + e.message);
     } finally {
       setIsExporting(false);
     }
@@ -108,11 +109,32 @@ function PlayerDialog({ playVideo, videoId }) {
               )}
             </div>
 
-            {/* Show local video path if available */}
             {videoPath && (
-              <p className="mt-4 text-green-600 break-words">
-                Video Path: <span className="font-mono">{videoPath}</span>
-              </p>
+              <div className="mt-4 p-4 bg-green-50 rounded-lg w-full">
+                <p className="text-green-800 font-semibold mb-2">Export Successful</p>
+                <p className="text-sm text-green-700 mb-3">
+                  Video saved at: <span className="font-mono">{videoPath}</span>
+                </p>
+                <div className="flex gap-2">
+                  <a
+                    href={videoPath}
+                    download={`video-${videoId}.mp4`}
+                    className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-sm"
+                  >
+                    Download Video
+                  </a>
+                  {cloudinaryUrl && (
+                    <a
+                      href={cloudinaryUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
+                    >
+                      View on Cloud
+                    </a>
+                  )}
+                </div>
+              </div>
             )}
 
             <div className="flex gap-10 mt-10">
@@ -126,13 +148,12 @@ function PlayerDialog({ playVideo, videoId }) {
               >
                 Cancel
               </Button>
-              {/* UPDATED Export button with new function */}
               <Button
                 className="cursor-pointer"
                 onClick={exportVideoToLocal}
                 disabled={isExporting}
               >
-                {isExporting ? "Saving..." : "Save to Local Folder"}
+                {isExporting ? "Exporting..." : "Export Video"}
               </Button>
             </div>
           </DialogHeader>

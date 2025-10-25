@@ -1,7 +1,6 @@
 import { renderMedia } from '@remotion/renderer';
 import path from 'path';
 import fs from 'fs/promises';
-import os from 'os';
 import { uploadMediaToCloudinary } from '@/configs/cloudinary';
 import RemotionVideo from '@/app/dashboard/_components/RemotionVideo';
 
@@ -13,34 +12,40 @@ export async function POST(req) {
       return new Response(JSON.stringify({ error: 'Missing required params' }), { status: 400 });
     }
 
-    // Temp output path for video
-    const tempOutputPath = path.join(os.tmpdir(), `${id}.mp4`);
+    const publicExportsDir = path.join(process.cwd(), 'public', 'exports');
+    await fs.mkdir(publicExportsDir, { recursive: true });
 
-    // Render video using Remotion renderer programmatically
+    const outputPath = path.join(publicExportsDir, `${id}.mp4`);
+
+    const fps = 30;
+    let durationInFrames = 300;
+
+    if (captions && captions.length > 0) {
+      const lastCaption = captions[captions.length - 1];
+      durationInFrames = Math.floor((lastCaption.end / 1000) * fps);
+    }
+
     await renderMedia({
       composition: {
-        id: 'Main', // use your actual composition id if different
+        id: 'Main',
         component: RemotionVideo,
-        durationInFrames: 300, // or calculate dynamically based on captions length & fps
-        fps: 30,
+        durationInFrames,
+        fps,
         width: 300,
         height: 500,
       },
       codec: 'h264',
-      outputLocation: tempOutputPath,
+      outputLocation: outputPath,
       inputProps: { script, imageList, audioFileUrl, captions, setDurationInFrame: () => {} },
     });
 
-    // Read video file buffer
-    const videoBuffer = await fs.readFile(tempOutputPath);
-
-    // Upload video buffer to Cloudinary
+    const videoBuffer = await fs.readFile(outputPath);
     const cloudinaryUrl = await uploadMediaToCloudinary(videoBuffer, `videos/${id}`, 'video');
 
-    // Clean up temp file
-    await fs.unlink(tempOutputPath);
-
-    return new Response(JSON.stringify({ videoUrl: cloudinaryUrl }), { status: 200 });
+    return new Response(JSON.stringify({
+      videoUrl: cloudinaryUrl,
+      videoPath: `/exports/${id}.mp4`
+    }), { status: 200 });
   } catch (error) {
     console.error('Video generation error:', error);
     return new Response(JSON.stringify({ error: error.message }), { status: 500 });
